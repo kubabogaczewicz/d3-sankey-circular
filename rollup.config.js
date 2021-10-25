@@ -1,20 +1,20 @@
-import resolve from 'rollup-plugin-node-resolve'
-import commonjs from 'rollup-plugin-commonjs'
-import babel from 'rollup-plugin-babel'
-import babelrc from 'babelrc-rollup'
-import pkg from './package.json'
+import babelrc from "babelrc-rollup";
+import babel from "rollup-plugin-babel";
+import commonjs from "rollup-plugin-commonjs";
+import resolve from "rollup-plugin-node-resolve";
+import pkg from "./package.json";
 
-let external = Object.keys(pkg.dependencies)
+let external = Object.keys(pkg.dependencies);
 
 export default [
   // browser-friendly UMD build
   {
-    input: 'src/index.js',
+    input: "src/index.js",
     output: {
       file: pkg.main,
-      name: 'd3',
+      name: "d3",
       extend: true,
-      format: 'umd',
+      format: "umd",
       globals: {
         'd3-collection': 'd3',
         'd3-array': 'd3',
@@ -23,12 +23,12 @@ export default [
         'd3-shape': 'd3'
       }
     },
-    external,
+    external: external.filter((dep) => dep.startsWith("d3")),
     plugins: [
       resolve(), // so Rollup can find `d3`
       commonjs(), // so Rollup can convert `d3` to an ES module
-      babel(babelrc())
-    ]
+      babel(babelrc()),
+    ],
   },
 
   // CommonJS (for Node) and ES module (for bundlers) build.
@@ -37,12 +37,12 @@ export default [
   // builds from a single configuration where possible, using
   // the `targets` option which can specify `dest` and `format`)
   {
-    input: 'src/index.js',
+    input: "src/index.js",
     output: [
       {
         file: pkg.module,
-        format: 'es',
-        name: 'd3',
+        format: "es",
+        name: "d3",
         extend: true,
         globals: {
           'd3-collection': 'd3',
@@ -54,6 +54,6 @@ export default [
       }
     ],
     external,
-    plugins: [babel(babelrc())]
-  }
-]
+    plugins: [babel(babelrc())],
+  },
+];
