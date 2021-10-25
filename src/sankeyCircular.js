@@ -1,7 +1,6 @@
 /// https://github.com/tomshanley/d3-sankeyCircular-circular
 // fork of https://github.com/d3/d3-sankeyCircular copyright Mike Bostock
-import { ascending, max, mean, min, sum } from "d3-array";
-import { map, nest } from "d3-collection";
+import { max, mean, min, sum } from "d3-array";
 import { linkHorizontal } from "d3-shape";
 import findCircuits from "elementary-circuits-directed-graph";
 import { justify } from "./align";
@@ -273,7 +272,7 @@ export default function () {
       node.sourceLinks = [];
       node.targetLinks = [];
     });
-    const nodeById = map(graph.nodes, id);
+    const nodeById = graph.nodes.reduce((nodesById, node) => nodesById.set(id(node), node), new Map());
     graph.links.forEach(function (link, i) {
       link.index = i;
       let source = link.source;
@@ -420,15 +419,14 @@ export default function () {
 
   // Assign nodes' breadths, and then shift nodes that overlap (resolveCollisions)
   function computeNodeBreadths(graph, iterations, id) {
-    const columns = nest()
-      .key(function (d) {
-        return d.column;
-      })
-      .sortKeys(ascending)
-      .entries(graph.nodes)
-      .map(function (d) {
-        return d.values;
-      });
+    const columns = graph.nodes.reduce((acc, node) => {
+      const columnIdx = node.column;
+      if (acc[columnIdx] == null) {
+        acc[columnIdx] = [];
+      }
+      acc[columnIdx].push(node);
+      return acc;
+    }, []);
 
     initializeNodeBreadth(id);
     resolveCollisions();
@@ -1568,15 +1566,14 @@ function fillHeight(graph, y0, y1) {
 }
 
 function resolveNodesOverlap(graph, y0, py) {
-  const columns = nest()
-    .key(function (d) {
-      return d.column;
-    })
-    .sortKeys(ascending)
-    .entries(graph.nodes)
-    .map(function (d) {
-      return d.values;
-    });
+  const columns = graph.nodes.reduce((acc, node) => {
+    const columnIdx = node.column;
+    if (acc[columnIdx] == null) {
+      acc[columnIdx] = [];
+    }
+    acc[columnIdx].push(node);
+    return acc;
+  }, []);
 
   columns.forEach(function (nodes) {
     const n = nodes.length;

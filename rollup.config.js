@@ -16,10 +16,7 @@ export default [
       extend: true,
       format: "umd",
       globals: {
-        "d3-collection": "d3",
         "d3-array": "d3",
-        "d3-interpolate": "d3",
-        "d3-path": "d3",
         "d3-shape": "d3",
       },
     },
@@ -45,10 +42,7 @@ export default [
         name: "d3",
         extend: true,
         globals: {
-          "d3-collection": "d3",
           "d3-array": "d3",
-          "d3-interpolate": "d3",
-          "d3-path": "d3",
           "d3-shape": "d3",
         },
       },
