@@ -85,12 +85,14 @@ const scale = 0.3; //Possibly let user control this, although anything over 0.5 
 
 export default function () {
   // Set the default values
-  let x0 = 0,
+  let x0 = 0, // x0 and y0 will always be 0,0
     y0 = 0,
     x1 = 1,
-    y1 = 1, // extent
+    y1 = 1, // working area
+    extent_x0 = 0,
+    extent_y0 = 0, // extent parameters
     dx = 24, // nodeWidth
-    py, // nodePadding, for vertical postioning
+    py, // nodePadding, for vertical positioning
     id = defaultId,
     align = justify,
     nodes = defaultNodes,
@@ -148,10 +150,13 @@ export default function () {
     // 8.1  Fix nodes overlapping after sortNodes
     resolveNodesOverlap(graph, y0, py);
 
-    // 8.2  Adjust node and link positions back to fill height of chart area if compressed
+    // 8.2  Adjust node and link positions for forward-going links to fill height of chart area if compressed
     fillHeight(graph, y0, y1);
 
-    // 9. Calculate visually appealling path for the circular paths, and create the "d" string
+    // 8.3 Scale graph down to make room for circular links
+    scaleAndMoveToFinalPlace(graph);
+
+    // 9. Calculate visually appealing path for the circular paths, and create the "d" string
     addCircularPathData(graph, circularLinkGap, y1, id);
 
     return graph;
@@ -189,10 +194,14 @@ export default function () {
 
   sankeyCircular.extent = function (_) {
     return arguments.length
-      ? ((x0 = +_[0][0]), (x1 = +_[1][0]), (y0 = +_[0][1]), (y1 = +_[1][1]), sankeyCircular)
+      ? ((extent_x0 = +_[0][0]),
+        (extent_y0 = +_[0][1]),
+        (x1 = +_[1][0] - +_[0][0]),
+        (y1 = +_[1][1] - +_[0][1]),
+        sankeyCircular)
       : [
-          [x0, y0],
-          [x1, y1],
+          [extent_x0, extent_y0],
+          [extent_x0 + x1, extent_y0 + y1],
         ];
   };
 
@@ -309,6 +318,40 @@ export default function () {
     });
   }
 
+  function scaleAndMoveToFinalPlace(graph) {
+    const margins = getCircleMargins(graph);
+
+    const [wsWidth, wsHeight] = sankeyCircular.size();
+    const horizontalMarginScaling = wsWidth / (wsWidth + margins.right + margins.left);
+    const verticalMarginScaling = wsHeight / (wsHeight + margins.top + margins.bottom);
+    const finalWidth = wsWidth - (margins.left + margins.right) * horizontalMarginScaling;
+    const finalHeight = wsHeight - (margins.top + margins.bottom) * verticalMarginScaling;
+
+    const xScale = finalWidth / wsWidth;
+    const yScale = finalHeight / wsHeight;
+
+    function transformX(x) {
+      return xScale * x + margins.left * horizontalMarginScaling + extent_x0;
+    }
+    function transformY(x) {
+      return yScale * x + margins.top * verticalMarginScaling + extent_y0;
+    }
+
+    // transform whole working area from [0,0][x1,y1] to [margin.left, margin.top][margin.left + workspaceWidth, margin.top + workspaceHeight]
+    graph.links.forEach((link) => {
+      link.y0 = transformY(link.y0);
+      link.y1 = transformY(link.y1);
+      link.width = yScale * link.width;
+    });
+
+    graph.nodes.forEach((node) => {
+      node.x0 = transformX(node.x0);
+      node.x1 = transformX(node.x1);
+      node.y0 = transformY(node.y0);
+      node.y1 = transformY(node.y1);
+    });
+  }
+
   function getCircleMargins(graph) {
     let totalTopLinksWidth = 0,
       totalBottomLinksWidth = 0,
@@ -354,32 +397,15 @@ export default function () {
     };
   }
 
-  // Update the x0, y0, x1 and y1 for the sankeyCircular, to allow space for any circular links
-  function scaleSankeySize(graph, margin) {
-    const maxColumn = max(graph.nodes, function (node) {
+  function distributeNodesToColumns(graph) {
+    var maxColumn = max(graph.nodes, function (node) {
       return node.column;
     });
-
-    const currentWidth = x1 - x0;
-    const currentHeight = y1 - y0;
-
-    const newWidth = currentWidth + margin.right + margin.left;
-    const newHeight = currentHeight + margin.top + margin.bottom;
-
-    const scaleX = currentWidth / newWidth;
-    const scaleY = currentHeight / newHeight;
-
-    x0 = x0 * scaleX + margin.left;
-    x1 = margin.right == 0 ? x1 : x1 * scaleX;
-    y0 = y0 * scaleY + margin.top;
-    y1 = y1 * scaleY;
 
     graph.nodes.forEach(function (node) {
       node.x0 = x0 + node.column * ((x1 - x0 - dx) / maxColumn);
       node.x1 = node.x0 + dx;
     });
-
-    return scaleY;
   }
 
   // Iteratively assign the depth for each node.
@@ -429,8 +455,8 @@ export default function () {
     }, []);
 
     initializeNodeBreadth(id);
-    resolveCollisions();
 
+    resolveCollisions();
     for (let alpha = 1, n = iterations; n > 0; --n) {
       relaxLeftAndRight((alpha *= 0.99), id);
       resolveCollisions();
@@ -458,16 +484,7 @@ export default function () {
         link.width = link.value * ky;
       });
 
-      //determine how much to scale down the chart, based on circular links
-      const margin = getCircleMargins(graph);
-      const ratio = scaleSankeySize(graph, margin);
-
-      //re-calculate widths
-      ky = ky * ratio;
-
-      graph.links.forEach(function (link) {
-        link.width = link.value * ky;
-      });
+      distributeNodesToColumns(graph);
 
       columns.forEach(function (nodes) {
         const nodesLength = nodes.length;
@@ -490,13 +507,8 @@ export default function () {
               node.y1 = node.y0 + node.value * ky;
             }
           } else {
-            if (margin.top == 0 || margin.bottom == 0) {
-              node.y0 = ((y1 - y0) / nodesLength) * i;
-              node.y1 = node.y0 + node.value * ky;
-            } else {
-              node.y0 = (y1 - y0) / 2 - nodesLength / 2 + i;
-              node.y1 = node.y0 + node.value * ky;
-            }
+            node.y0 = (y1 - y0) / 2 - nodesLength / 2 + i;
+            node.y1 = node.y0 + node.value * ky;
           }
         });
       });
@@ -806,6 +818,10 @@ export function addCircularPathData(graph, circularLinkGap, y1, id) {
     return link.source.y0;
   });
 
+  var maxY = max(graph.links, function (link) {
+    return link.target.y1;
+  });
+
   // create object for circular Path Data
   graph.links.forEach(function (link) {
     if (link.circular) {
@@ -906,8 +922,7 @@ export function addCircularPathData(graph, circularLinkGap, y1, id) {
 
         // bottom links
         if (link.circularLinkType == "bottom") {
-          link.circularPathData.verticalFullExtent =
-            Math.max(y1, link.source.y1, link.target.y1) + verticalMargin + link.circularPathData.verticalBuffer;
+          link.circularPathData.verticalFullExtent = maxY + verticalMargin + link.circularPathData.verticalBuffer;
           link.circularPathData.verticalLeftInnerExtent =
             link.circularPathData.verticalFullExtent - link.circularPathData.leftLargeArcRadius;
           link.circularPathData.verticalRightInnerExtent =
@@ -1529,40 +1544,27 @@ function fillHeight(graph, y0, y1) {
   const nodes = graph.nodes;
   const links = graph.links;
 
-  let top = false;
-  let bottom = false;
+  const minY0 = min(nodes, function (node) {
+    return node.y0;
+  });
+  const maxY1 = max(nodes, function (node) {
+    return node.y1;
+  });
+  const currentHeight = maxY1 - minY0;
+  const chartHeight = y1 - y0;
+  const ratio = chartHeight / currentHeight;
 
-  links.forEach(function (link) {
-    if (link.circularLinkType == "top") {
-      top = true;
-    } else if (link.circularLinkType == "bottom") {
-      bottom = true;
-    }
+  nodes.forEach(function (node) {
+    const nodeHeight = (node.y1 - node.y0) * ratio;
+    node.y0 = (node.y0 - minY0) * ratio;
+    node.y1 = node.y0 + nodeHeight;
   });
 
-  if (top == false || bottom == false) {
-    const minY0 = min(nodes, function (node) {
-      return node.y0;
-    });
-    const maxY1 = max(nodes, function (node) {
-      return node.y1;
-    });
-    const currentHeight = maxY1 - minY0;
-    const chartHeight = y1 - y0;
-    const ratio = chartHeight / currentHeight;
-
-    nodes.forEach(function (node) {
-      const nodeHeight = (node.y1 - node.y0) * ratio;
-      node.y0 = (node.y0 - minY0) * ratio;
-      node.y1 = node.y0 + nodeHeight;
-    });
-
-    links.forEach(function (link) {
-      link.y0 = (link.y0 - minY0) * ratio;
-      link.y1 = (link.y1 - minY0) * ratio;
-      link.width = link.width * ratio;
-    });
-  }
+  links.forEach(function (link) {
+    link.y0 = (link.y0 - minY0) * ratio;
+    link.y1 = (link.y1 - minY0) * ratio;
+    link.width = link.width * ratio;
+  });
 }
 
 function resolveNodesOverlap(graph, y0, py) {
