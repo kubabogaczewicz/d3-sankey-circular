@@ -17,19 +17,18 @@
     "elementary-circuits-directed-graph": "^1.0.4"
   },
   "devDependencies": {
-    "babel-cli": "^6.26.0",
+    "babel-core": "^6.26.3",
     "babel-plugin-external-helpers": "^6.22.0",
     "babel-preset-env": "^1.7.0",
     "babelrc-rollup": "^3.0.0",
-    "derequire": "^2.0.6",
     "eslint": "^4.19.1",
     "mkdirp": "^0.5.1",
+    "prettier": "^2.4.1",
     "rimraf": "^2.6.2",
     "rollup": "^0.59.4",
     "rollup-plugin-babel": "^3.0.4",
     "rollup-plugin-commonjs": "^9.3.4",
-    "rollup-plugin-node-resolve": "^3.3.0",
-    "uglify-js": "^3.6.0"
+    "rollup-plugin-node-resolve": "^3.3.0"
   },
   "babel": {
     "presets": [
@@ -49,8 +48,8 @@
     "build:watch": "rollup -c -w",
     "build:clean": "npm run clean && npm run build",
     "prepare": "npm run build:clean",
-    "lint": "./node_modules/.bin/eslint src/",
-    "lint:fix": "./node_modules/.bin/eslint src/ --fix"
+    "lint": "eslint src/",
+    "lint:fix": "eslint src/ --fix"
   },
   "files": [
     "dist"
@@ -61,5 +60,14 @@
   "bugs": {
     "url": "https://github.com/tomshanley/d3-sankey-circular/issues"
   },
-  "homepage": "https://github.com/tomshanley/d3-sankey-circular#readme"
+  "homepage": "https://github.com/tomshanley/d3-sankey-circular#readme",
+  "prettier": {
+    "endOfLine": "lf",
+    "printWidth": 120,
+    "trailingComma": "all",
+    "importOrder": [
+      "^[./]"
+    ],
+    "importOrderSeparation": true
+  }
 }

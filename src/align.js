@@ -1,4 +1,4 @@
-import {min} from "d3-array";
+import { min } from "d3-array";
 
 // For a given link, return the target node's depth
 function targetDepth(d) {
@@ -22,7 +22,5 @@ export function justify(node, n) {
 
 // The depth of a node when the nodeAlign (align) is set to 'center'
 export function center(node) {
-  return node.targetLinks.length ? node.depth
-      : node.sourceLinks.length ? min(node.sourceLinks, targetDepth) - 1
-      : 0;
+  return node.targetLinks.length ? node.depth : node.sourceLinks.length ? min(node.sourceLinks, targetDepth) - 1 : 0;
 }

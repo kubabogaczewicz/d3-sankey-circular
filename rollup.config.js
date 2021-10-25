@@ -4,7 +4,7 @@ import commonjs from "rollup-plugin-commonjs";
 import resolve from "rollup-plugin-node-resolve";
 import pkg from "./package.json";
 
-let external = Object.keys(pkg.dependencies);
+const external = Object.keys(pkg.dependencies);
 
 export default [
   // browser-friendly UMD build
@@ -16,12 +16,12 @@ export default [
       extend: true,
       format: "umd",
       globals: {
-        'd3-collection': 'd3',
-        'd3-array': 'd3',
-        'd3-interpolate': 'd3',
-        'd3-path': 'd3',
-        'd3-shape': 'd3'
-      }
+        "d3-collection": "d3",
+        "d3-array": "d3",
+        "d3-interpolate": "d3",
+        "d3-path": "d3",
+        "d3-shape": "d3",
+      },
     },
     external: external.filter((dep) => dep.startsWith("d3")),
     plugins: [
@@ -45,13 +45,13 @@ export default [
         name: "d3",
         extend: true,
         globals: {
-          'd3-collection': 'd3',
-          'd3-array': 'd3',
-          'd3-interpolate': 'd3',
-          'd3-path': 'd3',
-          'd3-shape': 'd3'
-        }
-      }
+          "d3-collection": "d3",
+          "d3-array": "d3",
+          "d3-interpolate": "d3",
+          "d3-path": "d3",
+          "d3-shape": "d3",
+        },
+      },
     ],
     external,
     plugins: [babel(babelrc())],
