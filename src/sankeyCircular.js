@@ -643,7 +643,7 @@ function identifyCircles(graph, id, sortNodes) {
     }
 
     // Find all elementary circuits
-    const cycles = findCircuits(adjList);
+    let cycles = findCircuits(adjList);
 
     // Sort by circuits length
     cycles.sort(function (a, b) {
@@ -651,9 +651,11 @@ function identifyCircles(graph, id, sortNodes) {
     });
 
     const circularLinks = {};
-    for (let i = 0; i < cycles.length; i++) {
-      const cycle = cycles[i];
+    while (cycles.length > 0) {
+      const cycle = cycles.shift();
       const last = cycle.slice(-2);
+      const lastLink = `${last[0]}>${last[1]}`;
+      cycles = cycles.filter((c) => c.join(">").indexOf(lastLink) === -1);
       if (!circularLinks[last[0]]) circularLinks[last[0]] = {};
       circularLinks[last[0]][last[1]] = true;
     }
