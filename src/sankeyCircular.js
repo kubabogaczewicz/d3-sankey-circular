@@ -85,10 +85,8 @@ const scale = 0.3; //Possibly let user control this, although anything over 0.5 
 
 export default function () {
   // Set the default values
-  let x0 = 0, // x0 and y0 will always be 0,0
-    y0 = 0,
-    x1 = 1,
-    y1 = 1, // working area
+  let viewportWidth = 1,
+    viewportHeight = 1, // working area
     extent_x0 = 0,
     extent_y0 = 0, // extent parameters
     dx = 24, // nodeWidth
@@ -140,24 +138,24 @@ export default function () {
     // 8.  Adjust nodes that overlap links that span 2+ columns
     const linkSortingIterations = 4; //Possibly let user control this number, like the iterations over node placement
     for (let iteration = 0; iteration < linkSortingIterations; iteration++) {
-      sortSourceLinks(graph, y1, id);
-      sortTargetLinks(graph, y1, id);
-      resolveNodeLinkOverlaps(graph, y0, y1, id);
-      sortSourceLinks(graph, y1, id);
-      sortTargetLinks(graph, y1, id);
+      sortSourceLinks(graph, viewportHeight, id);
+      sortTargetLinks(graph, viewportHeight, id);
+      resolveNodeLinkOverlaps(graph, viewportHeight, id);
+      sortSourceLinks(graph, viewportHeight, id);
+      sortTargetLinks(graph, viewportHeight, id);
     }
 
     // 8.1  Fix nodes overlapping after sortNodes
-    resolveNodesOverlap(graph, y0, py);
+    resolveNodesOverlap(graph, py);
 
     // 8.2  Adjust node and link positions for forward-going links to fill height of chart area if compressed
-    fillHeight(graph, y0, y1);
+    fillHeight(graph, viewportHeight);
 
     // 8.3 Scale graph down to make room for circular links
     scaleAndMoveToFinalPlace(graph);
 
     // 9. Calculate visually appealing path for the circular paths, and create the "d" string
-    addCircularPathData(graph, circularLinkGap, y1, id);
+    addCircularPathData(graph, circularLinkGap, viewportHeight, id);
 
     return graph;
   } // end of sankeyCircular function
@@ -189,19 +187,21 @@ export default function () {
   };
 
   sankeyCircular.size = function (_) {
-    return arguments.length ? ((x0 = y0 = 0), (x1 = +_[0]), (y1 = +_[1]), sankeyCircular) : [x1 - x0, y1 - y0];
+    return arguments.length
+      ? ((extent_x0 = 0), (extent_y0 = 0), (viewportWidth = +_[0]), (viewportHeight = +_[1]), sankeyCircular)
+      : [viewportWidth, viewportHeight];
   };
 
   sankeyCircular.extent = function (_) {
     return arguments.length
       ? ((extent_x0 = +_[0][0]),
         (extent_y0 = +_[0][1]),
-        (x1 = +_[1][0] - +_[0][0]),
-        (y1 = +_[1][1] - +_[0][1]),
+        (viewportWidth = +_[1][0] - +_[0][0]),
+        (viewportHeight = +_[1][1] - +_[0][1]),
         sankeyCircular)
       : [
           [extent_x0, extent_y0],
-          [extent_x0 + x1, extent_y0 + y1],
+          [extent_x0 + viewportWidth, extent_y0 + viewportHeight],
         ];
   };
 
@@ -242,15 +242,15 @@ export default function () {
     // Force position of circular link type based on position
     graph.links.forEach(function (link) {
       if (link.circular) {
-        link.circularLinkType = link.y0 + link.y1 < y1 ? "top" : "bottom";
+        link.circularLinkType = link.y0 + link.y1 < viewportHeight ? "top" : "bottom";
 
         link.source.circularLinkType = link.circularLinkType;
         link.target.circularLinkType = link.circularLinkType;
       }
     });
 
-    sortSourceLinks(graph, y1, id, false); // Sort links but do not move nodes
-    sortTargetLinks(graph, y1, id);
+    sortSourceLinks(graph, viewportHeight, id, false); // Sort links but do not move nodes
+    sortTargetLinks(graph, viewportHeight, id);
 
     // 7.  Sort links per node, based on the links' source/target nodes' breadths
     // 8.  Adjust nodes that overlap links that span 2+ columns
@@ -269,7 +269,7 @@ export default function () {
     // fillHeight(graph, y0, y1)
 
     // 9. Calculate visually appealling path for the circular paths, and create the "d" string
-    addCircularPathData(graph, circularLinkGap, y1, id);
+    addCircularPathData(graph, circularLinkGap, viewportHeight, id);
     return graph;
   };
 
@@ -403,7 +403,7 @@ export default function () {
     });
 
     graph.nodes.forEach(function (node) {
-      node.x0 = x0 + node.column * ((x1 - x0 - dx) / maxColumn);
+      node.x0 = node.column * ((viewportWidth - dx) / maxColumn);
       node.x1 = node.x0 + dx;
     });
   }
@@ -467,14 +467,14 @@ export default function () {
       if (paddingRatio) {
         let padding = Infinity;
         columns.forEach(function (nodes) {
-          const thisPadding = (y1 * paddingRatio) / (nodes.length + 1);
+          const thisPadding = (viewportHeight * paddingRatio) / (nodes.length + 1);
           padding = thisPadding < padding ? thisPadding : padding;
         });
         py = padding;
       }
 
       let ky = min(columns, function (nodes) {
-        return (y1 - y0 - (nodes.length - 1) * py) / sum(nodes, value);
+        return (viewportHeight - (nodes.length - 1) * py) / sum(nodes, value);
       });
 
       //calculate the widths of the links
@@ -490,24 +490,24 @@ export default function () {
         const nodesLength = nodes.length;
         nodes.forEach(function (node, i) {
           if (node.depth == columns.length - 1 && nodesLength == 1) {
-            node.y0 = y1 / 2 - node.value * ky;
+            node.y0 = viewportHeight / 2 - node.value * ky;
             node.y1 = node.y0 + node.value * ky;
           } else if (node.depth == 0 && nodesLength == 1) {
-            node.y0 = y1 / 2 - node.value * ky;
+            node.y0 = viewportHeight / 2 - node.value * ky;
             node.y1 = node.y0 + node.value * ky;
           } else if (node.partOfCycle) {
             if (numberOfNonSelfLinkingCycles(node, id) == 0) {
-              node.y0 = y1 / 2 + i;
+              node.y0 = viewportHeight / 2 + i;
               node.y1 = node.y0 + node.value * ky;
             } else if (node.circularLinkType == "top") {
-              node.y0 = y0 + i;
+              node.y0 = i;
               node.y1 = node.y0 + node.value * ky;
             } else {
-              node.y0 = y1 - node.value * ky - i;
+              node.y0 = viewportHeight - node.value * ky - i;
               node.y1 = node.y0 + node.value * ky;
             }
           } else {
-            node.y0 = (y1 - y0) / 2 - nodesLength / 2 + i;
+            node.y0 = viewportHeight / 2 - nodesLength / 2 + i;
             node.y1 = node.y0 + node.value * ky;
           }
         });
@@ -522,8 +522,8 @@ export default function () {
           // check the node is not an orphan
           if (node.sourceLinks.length || node.targetLinks.length) {
             const nodeHeight = node.y1 - node.y0;
-            node.y0 = y1 / 2 - nodeHeight / 2;
-            node.y1 = y1 / 2 + nodeHeight / 2;
+            node.y0 = viewportHeight / 2 - nodeHeight / 2;
+            node.y1 = viewportHeight / 2 + nodeHeight / 2;
             let avg = 0;
 
             const avgTargetY = mean(node.sourceLinks, linkTargetCenter);
@@ -548,7 +548,7 @@ export default function () {
         const n = nodes.length;
         let node,
           dy,
-          y = y0,
+          y = 0,
           i;
 
         // Push any overlapping nodes down.
@@ -566,7 +566,7 @@ export default function () {
         }
 
         // If the bottommost node goes outside the bounds, push it back up.
-        dy = y - py - y1;
+        dy = y - py - viewportHeight;
         if (dy > 0) {
           (y = node.y0 -= dy), (node.y1 -= dy);
 
@@ -1218,7 +1218,7 @@ function linkPerpendicularYToLinkTarget(longerLink, shorterLink) {
 }
 
 // Move any nodes that overlap links which span 2+ columns
-function resolveNodeLinkOverlaps(graph, y0, y1, id) {
+function resolveNodeLinkOverlaps(graph, viewportHeight, id) {
   graph.links.forEach(function (link) {
     if (link.circular) {
       return;
@@ -1254,7 +1254,7 @@ function resolveNodeLinkOverlaps(graph, y0, y1, id) {
               dy = node.y1 - linkY0AtColumn + 10;
               dy = node.circularLinkType == "bottom" ? dy : -dy;
 
-              node = adjustNodeHeight(node, dy, y0, y1);
+              node = adjustNodeHeight(node, dy, viewportHeight);
 
               // check if other nodes need to move up too
               graph.nodes.forEach(function (otherNode) {
@@ -1263,14 +1263,14 @@ function resolveNodeLinkOverlaps(graph, y0, y1, id) {
                   return;
                 }
                 if (nodesOverlap(node, otherNode)) {
-                  adjustNodeHeight(otherNode, dy, y0, y1);
+                  adjustNodeHeight(otherNode, dy, viewportHeight);
                 }
               });
             } else if (linkY1AtColumn > node.y0 && linkY1AtColumn < node.y1) {
               // If bottom of link overlaps node, push node down
               dy = linkY1AtColumn - node.y0 + 10;
 
-              node = adjustNodeHeight(node, dy, y0, y1);
+              node = adjustNodeHeight(node, dy, viewportHeight);
 
               // check if other nodes need to move down too
               graph.nodes.forEach(function (otherNode) {
@@ -1279,14 +1279,14 @@ function resolveNodeLinkOverlaps(graph, y0, y1, id) {
                   return;
                 }
                 if (otherNode.y0 < node.y1 && otherNode.y1 > node.y1) {
-                  adjustNodeHeight(otherNode, dy, y0, y1);
+                  adjustNodeHeight(otherNode, dy, viewportHeight);
                 }
               });
             } else if (linkY0AtColumn < node.y0 && linkY1AtColumn > node.y1) {
               // if link completely overlaps node
               dy = linkY1AtColumn - node.y0 + 10;
 
-              node = adjustNodeHeight(node, dy, y0, y1);
+              node = adjustNodeHeight(node, dy, viewportHeight);
 
               graph.nodes.forEach(function (otherNode) {
                 // don't need to check itself or nodes at different columns
@@ -1294,7 +1294,7 @@ function resolveNodeLinkOverlaps(graph, y0, y1, id) {
                   return;
                 }
                 if (otherNode.y0 < node.y1 && otherNode.y1 > node.y1) {
-                  adjustNodeHeight(otherNode, dy, y0, y1);
+                  adjustNodeHeight(otherNode, dy, viewportHeight);
                 }
               });
             }
@@ -1322,8 +1322,8 @@ function nodesOverlap(nodeA, nodeB) {
 }
 
 // update a node, and its associated links, vertical positions (y0, y1)
-function adjustNodeHeight(node, dy, sankeyY0, sankeyY1) {
-  if (node.y0 + dy >= sankeyY0 && node.y1 + dy <= sankeyY1) {
+function adjustNodeHeight(node, dy, viewportHeight) {
+  if (node.y0 + dy >= 0 && node.y1 + dy <= viewportHeight) {
     node.y0 = node.y0 + dy;
     node.y1 = node.y1 + dy;
 
@@ -1540,7 +1540,7 @@ function selfLinking(link, id) {
   return getNodeID(link.source, id) == getNodeID(link.target, id);
 }
 
-function fillHeight(graph, y0, y1) {
+function fillHeight(graph, viewportHeight) {
   const nodes = graph.nodes;
   const links = graph.links;
 
@@ -1551,8 +1551,7 @@ function fillHeight(graph, y0, y1) {
     return node.y1;
   });
   const currentHeight = maxY1 - minY0;
-  const chartHeight = y1 - y0;
-  const ratio = chartHeight / currentHeight;
+  const ratio = viewportHeight / currentHeight;
 
   nodes.forEach(function (node) {
     const nodeHeight = (node.y1 - node.y0) * ratio;
@@ -1567,7 +1566,7 @@ function fillHeight(graph, y0, y1) {
   });
 }
 
-function resolveNodesOverlap(graph, y0, py) {
+function resolveNodesOverlap(graph, py) {
   const columns = graph.nodes.reduce((acc, node) => {
     const columnIdx = node.column;
     if (acc[columnIdx] == null) {
@@ -1581,7 +1580,7 @@ function resolveNodesOverlap(graph, y0, py) {
     const n = nodes.length;
     let node,
       dy,
-      y = y0,
+      y = 0,
       i;
     // Push any overlapping nodes down.
     nodes.sort(ascendingBreadth);
