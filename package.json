@@ -46,7 +46,7 @@
     "build": "rollup -c",
     "build:watch": "rollup -c -w",
     "build:clean": "npm run clean && npm run build",
-    "prepare": "npm run build:clean",
+    "prepare": "npm run build",
     "lint": "eslint src/",
     "lint:fix": "eslint src/ --fix"
   },
