@@ -627,6 +627,9 @@ export default function () {
 
 // Identify circles in the link objects
 function identifyCircles(graph, id, sortNodes) {
+  function pathAsString(path) {
+    return path.map((n) => `[${n}]`).join(">");
+  }
   let circularLinkID = 0;
   if (sortNodes === null) {
     // Building adjacency graph
@@ -654,8 +657,8 @@ function identifyCircles(graph, id, sortNodes) {
     while (cycles.length > 0) {
       const cycle = cycles.shift();
       const last = cycle.slice(-2);
-      const lastLink = `${last[0]}>${last[1]}`;
-      cycles = cycles.filter((c) => c.join(">").indexOf(lastLink) === -1);
+      const lastLink = pathAsString(last);
+      cycles = cycles.filter((c) => pathAsString(c).indexOf(lastLink) === -1);
       if (!circularLinks[last[0]]) circularLinks[last[0]] = {};
       circularLinks[last[0]][last[1]] = true;
     }
