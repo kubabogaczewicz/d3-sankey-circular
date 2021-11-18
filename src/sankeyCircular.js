@@ -365,17 +365,17 @@ export default function () {
     graph.links.forEach(function (link) {
       if (link.circular) {
         if (link.circularLinkType == "top") {
-          totalTopLinksWidth = totalTopLinksWidth + link.width;
+          totalTopLinksWidth = totalTopLinksWidth + circularLinkGap + link.width;
         } else {
-          totalBottomLinksWidth = totalBottomLinksWidth + link.width;
+          totalBottomLinksWidth = totalBottomLinksWidth + circularLinkGap + link.width;
         }
 
         if (link.target.column == 0) {
-          totalLeftLinksWidth = totalLeftLinksWidth + link.width;
+          totalLeftLinksWidth = totalLeftLinksWidth + circularLinkGap + link.width;
         }
 
         if (link.source.column == maxColumn) {
-          totalRightLinksWidth = totalRightLinksWidth + link.width;
+          totalRightLinksWidth = totalRightLinksWidth + circularLinkGap + link.width;
         }
       }
     });
@@ -488,27 +488,35 @@ export default function () {
 
       columns.forEach(function (nodes) {
         const nodesLength = nodes.length;
-        nodes.forEach(function (node, i) {
+        let takenFromTop = 0;
+        let takenFromMiddle = 0;
+        let takenFromBottom = 0;
+        nodes.forEach(function (node) {
+          const nodeHeight = node.value * ky;
           if (node.depth == columns.length - 1 && nodesLength == 1) {
-            node.y0 = viewportHeight / 2 - node.value * ky;
-            node.y1 = node.y0 + node.value * ky;
+            node.y0 = viewportHeight / 2 - nodeHeight / 2;
+            node.y1 = node.y0 + nodeHeight;
           } else if (node.depth == 0 && nodesLength == 1) {
-            node.y0 = viewportHeight / 2 - node.value * ky;
-            node.y1 = node.y0 + node.value * ky;
+            node.y0 = viewportHeight / 2 - nodeHeight / 2;
+            node.y1 = node.y0 + nodeHeight;
           } else if (node.partOfCycle) {
             if (numberOfNonSelfLinkingCycles(node, id) == 0) {
-              node.y0 = viewportHeight / 2 + i;
-              node.y1 = node.y0 + node.value * ky;
+              node.y0 = viewportHeight / 3 + takenFromMiddle;
+              node.y1 = node.y0 + nodeHeight;
+              takenFromMiddle += nodeHeight;
             } else if (node.circularLinkType == "top") {
-              node.y0 = i;
-              node.y1 = node.y0 + node.value * ky;
+              node.y0 = takenFromTop;
+              node.y1 = node.y0 + nodeHeight;
+              takenFromTop += nodeHeight;
             } else {
-              node.y0 = viewportHeight - node.value * ky - i;
-              node.y1 = node.y0 + node.value * ky;
+              node.y0 = viewportHeight - takenFromBottom;
+              node.y1 = node.y0 + nodeHeight;
+              takenFromBottom += nodeHeight;
             }
           } else {
-            node.y0 = viewportHeight / 2 - nodesLength / 2 + i;
-            node.y1 = node.y0 + node.value * ky;
+            node.y0 = viewportHeight / 3 + takenFromMiddle;
+            node.y1 = node.y0 + nodeHeight;
+            takenFromMiddle += nodeHeight;
           }
         });
       });
