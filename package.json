@@ -63,7 +63,7 @@
   "prettier": {
     "endOfLine": "lf",
     "printWidth": 120,
-    "trailingComma": "all",
+    "trailingComma": "es5",
     "importOrder": [
       "^[./]"
     ],

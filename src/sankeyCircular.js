@@ -5,6 +5,7 @@ import { linkHorizontal } from "d3-shape";
 import findCircuits from "elementary-circuits-directed-graph";
 import { justify } from "./align";
 import constant from "./constant";
+import { SankeyError, TOO_MUCH_PADDING, TOO_SMALL_NODE } from "./error";
 
 // sort links' breadth (ie top to bottom in a column), based on their source nodes' breadths
 function ascendingSourceBreadth(a, b) {
@@ -474,12 +475,34 @@ export default function () {
       }
 
       let ky = min(columns, function (nodes) {
-        return (viewportHeight - (nodes.length - 1) * py) / sum(nodes, value);
+        const totalPaddingInColumn = (nodes.length - 1) * py;
+        const totalValueInColumn = sum(nodes, value);
+        if (totalPaddingInColumn > viewportHeight) {
+          throw new SankeyError(
+            TOO_MUCH_PADDING,
+            "Insufficient vertical space to place nodes so that padding is respected. Use paddingRatio, modify py or enlarge viewport.",
+            {
+              numberOfNodes: nodes.length,
+              padding: py,
+              viewportHeight,
+            }
+          );
+        }
+        return (viewportHeight - totalPaddingInColumn) / totalValueInColumn;
       });
+      const smallestNodeValueInGraph = graph.nodes.reduce((v, n) => Math.min(v, n.value), Infinity);
 
-      //calculate the widths of the links
+      // scale everything down to make room for moving nodes up/down to better place then in regards to links.
       ky = ky * scale;
 
+      if (smallestNodeValueInGraph * ky < 1) {
+        throw new SankeyError(TOO_SMALL_NODE, "Smallest node in graph is smaller than 1px.", {
+          node: graph.nodes.find((n) => n.value === smallestNodeValueInGraph),
+          nodeSize: smallestNodeValueInGraph * ky,
+        });
+      }
+
+      // calculate the widths of the links
       graph.links.forEach(function (link) {
         link.width = link.value * ky;
       });
